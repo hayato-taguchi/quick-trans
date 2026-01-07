@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Q-Trans 設定</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        margin: 0;
+        padding: 24px;
+        background: #f3f4f6;
+        color: #111827;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 12px;
+      }
+      p {
+        font-size: 13px;
+        color: #4b5563;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 6px;
+      }
+      input[type="password"] {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 1px #3b82f6;
+      }
+      button {
+        margin-top: 16px;
+        padding: 8px 14px;
+        border-radius: 9999px;
+        border: none;
+        background: #111827;
+        color: white;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #020617;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 12px;
+      }
+      .status.ok {
+        color: #059669;
+      }
+      .status.error {
+        color: #b91c1c;
+      }
+      code {
+        background: #e5e7eb;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Q-Trans 設定</h1>
+      <p>
+        選択したテキストを自動で翻訳してチップ表示します。ここで翻訳に利用する
+        Azure OpenAI の情報を設定してください。<br />
+        例:
+        <code>https://&lt;リソース名&gt;.openai.azure.com</code>
+        など
+      </p>
+
+      <label for="endpoint">Azure OpenAI エンドポイント URL</label>
+      <input
+        id="endpoint"
+        type="text"
+        placeholder="https://your-resource.openai.azure.com"
+      />
+
+      <label for="deployment">デプロイ名（Deployment name）</label>
+      <input
+        id="deployment"
+        type="text"
+        placeholder="gpt-4o-mini などのデプロイ名"
+      />
+
+      <label for="apiVersion">API バージョン</label>
+      <input
+        id="apiVersion"
+        type="text"
+        placeholder="2024-06-01 など"
+      />
+
+      <label for="apiKey">Azure OpenAI API キー</label>
+      <input
+        id="apiKey"
+        type="password"
+        placeholder="Azure OpenAI の api-key を入力"
+      />
+
+      <button id="saveBtn">保存する</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
+
+

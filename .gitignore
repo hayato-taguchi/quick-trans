@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Build outputs
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+
+# Extension specific
+extension/*.crx
+extension/*.pem
+
+# Backend
+backend/.env
+backend/logs/
+backend/tmp/
+
+# Landing
+landing/.next/
+landing/.vercel/
+landing/out/
+landing/dist/
+
