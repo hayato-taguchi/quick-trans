@@ -48,6 +48,25 @@ let qtransCurrentSelection: {
   rect: DOMRect;
 } | null = null;
 
+// IME入力中かどうかを追跡
+let isComposing = false;
+
+function isEditableElement(element: Element | null): boolean {
+  if (!element) return false;
+
+  const tagName = element.tagName;
+  if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+    return true;
+  }
+
+  // contentEditable要素のチェック
+  if (element instanceof HTMLElement && element.isContentEditable) {
+    return true;
+  }
+
+  return false;
+}
+
 function removeExistingChip(): void {
   const existing = document.getElementById(QTRANS_CHIP_ID);
   if (existing && existing.parentNode) {
@@ -356,6 +375,11 @@ async function handleSelectionChange(): Promise<void> {
   }
 
   qtransSelectionTimeout = setTimeout(async () => {
+    // IME入力中または入力フィールドにフォーカスがある場合はスキップ
+    if (isComposing || isEditableElement(document.activeElement)) {
+      return;
+    }
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       removeExistingChip();
@@ -408,4 +432,13 @@ async function handleSelectionChange(): Promise<void> {
 
 document.addEventListener('selectionchange', handleSelectionChange, {
   passive: true,
+});
+
+// IME入力の開始・終了を追跡
+document.addEventListener('compositionstart', () => {
+  isComposing = true;
+});
+
+document.addEventListener('compositionend', () => {
+  isComposing = false;
 });
