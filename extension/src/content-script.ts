@@ -41,6 +41,13 @@ const QTRANS_CHIP_ID = '__qtrans_translation_chip';
 let qtransHideTimeout: ReturnType<typeof setTimeout> | null = null;
 let qtransLastText = '';
 
+// 解説機能のために選択テキストと文脈を保持
+let qtransCurrentSelection: {
+  text: string;
+  context: TranslationContext;
+  rect: DOMRect;
+} | null = null;
+
 function removeExistingChip(): void {
   const existing = document.getElementById(QTRANS_CHIP_ID);
   if (existing && existing.parentNode) {
@@ -52,29 +59,93 @@ function removeExistingChip(): void {
   }
 }
 
-function createChipElement(text: string, rect: DOMRect): void {
+interface ChipOptions {
+  showExplainButton?: boolean;
+  isExplanation?: boolean;
+}
+
+function createChipElement(text: string, rect: DOMRect, options: ChipOptions = {}): void {
   removeExistingChip();
+
+  const { showExplainButton = false, isExplanation = false } = options;
 
   const chip = document.createElement('div');
   chip.id = QTRANS_CHIP_ID;
-  chip.textContent = text;
   chip.style.position = 'fixed';
-  chip.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
+  chip.style.left = `${Math.min(rect.left, window.innerWidth - 320)}px`;
   chip.style.top = `${rect.bottom + 8}px`;
-  chip.style.maxWidth = '260px';
+  chip.style.maxWidth = isExplanation ? '360px' : '280px';
   chip.style.zIndex = '2147483647';
   chip.style.background = '#111827';
   chip.style.color = '#f9fafb';
-  chip.style.padding = '6px 10px';
-  chip.style.borderRadius = '6px';
+  chip.style.padding = '8px 12px';
+  chip.style.borderRadius = '8px';
   chip.style.fontSize = '12px';
   chip.style.fontFamily = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
   chip.style.boxShadow = '0 8px 20px rgba(0,0,0,0.25)';
-  chip.style.display = 'flex';
-  chip.style.alignItems = 'center';
-  chip.style.gap = '6px';
   chip.style.cursor = 'default';
 
+  // コンテンツエリア
+  const content = document.createElement('div');
+  content.style.display = 'flex';
+  content.style.alignItems = 'flex-start';
+  content.style.gap = '8px';
+
+  // テキスト部分
+  const textSpan = document.createElement('span');
+  textSpan.textContent = text;
+  textSpan.style.flex = '1';
+  textSpan.style.lineHeight = '1.5';
+  if (isExplanation) {
+    textSpan.style.whiteSpace = 'pre-wrap';
+  }
+  content.appendChild(textSpan);
+
+  // ボタンコンテナ
+  const buttons = document.createElement('div');
+  buttons.style.display = 'flex';
+  buttons.style.alignItems = 'center';
+  buttons.style.gap = '6px';
+  buttons.style.flexShrink = '0';
+
+  // 解説ボタン（?）
+  if (showExplainButton && qtransCurrentSelection) {
+    const explainBtn = document.createElement('span');
+    explainBtn.textContent = '?';
+    explainBtn.title = 'この単語/フレーズを解説';
+    explainBtn.style.cursor = 'pointer';
+    explainBtn.style.opacity = '0.7';
+    explainBtn.style.fontWeight = 'bold';
+    explainBtn.style.fontSize = '13px';
+    explainBtn.style.width = '18px';
+    explainBtn.style.height = '18px';
+    explainBtn.style.display = 'flex';
+    explainBtn.style.alignItems = 'center';
+    explainBtn.style.justifyContent = 'center';
+    explainBtn.style.borderRadius = '50%';
+    explainBtn.style.background = 'rgba(255,255,255,0.15)';
+    explainBtn.onmouseenter = (): void => {
+      explainBtn.style.opacity = '1';
+      explainBtn.style.background = 'rgba(255,255,255,0.25)';
+    };
+    explainBtn.onmouseleave = (): void => {
+      explainBtn.style.opacity = '0.7';
+      explainBtn.style.background = 'rgba(255,255,255,0.15)';
+    };
+    explainBtn.onclick = async (e: MouseEvent): Promise<void> => {
+      e.stopPropagation();
+      if (!qtransCurrentSelection) return;
+
+      const { text: selectedText, context, rect: selectionRect } = qtransCurrentSelection;
+      createChipElement('解説中…', selectionRect, { isExplanation: true });
+
+      const explanation = await explainText(selectedText, context);
+      createChipElement(explanation, selectionRect, { isExplanation: true });
+    };
+    buttons.appendChild(explainBtn);
+  }
+
+  // 閉じるボタン（×）
   const close = document.createElement('span');
   close.textContent = '×';
   close.style.cursor = 'pointer';
@@ -84,14 +155,23 @@ function createChipElement(text: string, rect: DOMRect): void {
     e.stopPropagation();
     removeExistingChip();
   };
+  close.onmouseenter = (): void => {
+    close.style.opacity = '1';
+  };
+  close.onmouseleave = (): void => {
+    close.style.opacity = '0.7';
+  };
+  buttons.appendChild(close);
 
-  chip.appendChild(close);
+  content.appendChild(buttons);
+  chip.appendChild(content);
   document.body.appendChild(chip);
 
-  // 自動で数秒後に消える
+  // 自動で消える（解説モードは長めに）
+  const timeout = isExplanation ? 15000 : 8000;
   qtransHideTimeout = setTimeout(() => {
     removeExistingChip();
-  }, 8000);
+  }, timeout);
 }
 
 async function loadApiKey(): Promise<AzureConfig> {
@@ -176,7 +256,7 @@ function getSurroundingContext(selection: Selection): SurroundingContext | null 
   };
 }
 
-async function translateText(text: string, context: TranslationContext | null = null): Promise<string> {
+async function callAzureOpenAI(systemPrompt: string, userContent: string): Promise<string> {
   const config = await loadApiKey();
   if (!config.apiKey || !config.endpoint || !config.deployment || !config.apiVersion) {
     return 'Azure OpenAI の設定が未完了です（拡張機能のオプションから設定してください）';
@@ -187,36 +267,9 @@ async function translateText(text: string, context: TranslationContext | null = 
       config.deployment
     }/chat/completions?api-version=${encodeURIComponent(config.apiVersion)}`;
 
-    // 文脈情報を構築
-    let contextInfo = '';
-    if (context) {
-      const parts: string[] = [];
-      if (context.page.title) parts.push(`ページタイトル: ${context.page.title}`);
-      if (context.page.headings) parts.push(`見出し: ${context.page.headings}`);
-      if (context.surrounding?.before) parts.push(`前の文脈: ${context.surrounding.before}`);
-      if (context.surrounding?.after) parts.push(`後の文脈: ${context.surrounding.after}`);
-
-      if (parts.length > 0) {
-        contextInfo = `\n\n以下の文脈情報を参考にして、適切な翻訳を行ってください:\n${parts.join('\n')}`;
-      }
-    }
-
-    const systemPrompt = `You are a professional translation engine specialized in technical and academic content. 
-Detect the source language automatically. 
-If the source is Japanese, translate it to natural, professional English. 
-Otherwise, translate it to natural, professional Japanese.
-When translating technical terms, maintain consistency with the context and use appropriate terminology.
-Respond with translation only, without any explanations or additional text.${contextInfo}`;
-
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
-      {
-        role: 'user',
-        content: text,
-      },
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
     ];
 
     const res = await fetch(url, {
@@ -227,22 +280,72 @@ Respond with translation only, without any explanations or additional text.${con
       },
       body: JSON.stringify({
         messages,
-        temperature: 0.3, // 少し温度を上げて文脈を考慮しやすくする
+        temperature: 0.3,
       }),
     });
 
     if (!res.ok) {
       console.error('Q-Trans API error', await res.text());
-      return '翻訳 API エラーが発生しました';
+      return 'API エラーが発生しました';
     }
 
     const data: AzureOpenAIResponse = await res.json();
-    const translation = data.choices?.[0]?.message?.content?.trim() || '翻訳結果を取得できませんでした';
-    return translation;
+    return data.choices?.[0]?.message?.content?.trim() || '結果を取得できませんでした';
   } catch (e) {
     console.error('Q-Trans fetch error', e);
-    return 'ネットワークエラーにより翻訳できませんでした';
+    return 'ネットワークエラーが発生しました';
   }
+}
+
+function buildContextInfo(context: TranslationContext | null): string {
+  if (!context) return '';
+
+  const parts: string[] = [];
+  if (context.page.title) parts.push(`ページタイトル: ${context.page.title}`);
+  if (context.page.headings) parts.push(`見出し: ${context.page.headings}`);
+  if (context.surrounding?.before) parts.push(`前の文脈: ${context.surrounding.before}`);
+  if (context.surrounding?.after) parts.push(`後の文脈: ${context.surrounding.after}`);
+
+  if (parts.length > 0) {
+    return `\n\n文脈情報:\n${parts.join('\n')}`;
+  }
+  return '';
+}
+
+async function translateText(
+  text: string,
+  context: TranslationContext | null = null
+): Promise<string> {
+  const contextInfo = buildContextInfo(context);
+
+  const systemPrompt = `You are a professional translation engine specialized in technical and academic content. 
+Detect the source language automatically. 
+If the source is Japanese, translate it to natural, professional English. 
+Otherwise, translate it to natural, professional Japanese.
+When translating technical terms, maintain consistency with the context and use appropriate terminology.
+Respond with translation only, without any explanations or additional text.${
+    contextInfo ? `\n\n以下の文脈情報を参考にして、適切な翻訳を行ってください:${contextInfo}` : ''
+  }`;
+
+  return callAzureOpenAI(systemPrompt, text);
+}
+
+async function explainText(text: string, context: TranslationContext): Promise<string> {
+  const contextInfo = buildContextInfo(context);
+
+  const systemPrompt = `あなたは技術ドキュメントの読解を助けるアシスタントです。
+ユーザーが選択した単語やフレーズについて、その文脈における意味を簡潔に解説してください。
+
+回答のルール:
+- 2〜3文程度で簡潔に説明する
+- その文脈での具体的な意味や役割を説明する
+- 専門用語の場合は、初心者にもわかるように噛み砕いて説明する
+- 必要に応じて「この文脈では〜」のように文脈に即した説明をする
+- 日本語で回答する${contextInfo}`;
+
+  const userContent = `「${text}」について、この文脈での意味を教えてください。`;
+
+  return callAzureOpenAI(systemPrompt, userContent);
 }
 
 let qtransSelectionTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -256,18 +359,21 @@ async function handleSelectionChange(): Promise<void> {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       removeExistingChip();
+      qtransCurrentSelection = null;
       return;
     }
 
     const text = selection.toString().trim();
     if (!text || text.length === 0) {
       removeExistingChip();
+      qtransCurrentSelection = null;
       return;
     }
 
     // あまり長すぎる文は対象外（任意に 300 文字まで）
     if (text.length > 300) {
       removeExistingChip();
+      qtransCurrentSelection = null;
       return;
     }
 
@@ -291,9 +397,12 @@ async function handleSelectionChange(): Promise<void> {
       surrounding: surroundingContext,
     };
 
+    // 解説機能のために選択情報を保持
+    qtransCurrentSelection = { text, context, rect };
+
     createChipElement('翻訳中…', rect);
     const translated = await translateText(text, context);
-    createChipElement(translated, rect);
+    createChipElement(translated, rect, { showExplainButton: true });
   }, 350);
 }
 
