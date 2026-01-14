@@ -1,0 +1,14 @@
+{
+  "name": "q-trans-extension",
+  "version": "1.0.0",
+  "description": "Q-Trans Chrome Extension",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "typescript": "^5.7.3"
+  }
+}

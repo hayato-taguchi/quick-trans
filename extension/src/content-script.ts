@@ -1,11 +1,47 @@
 // Q-Trans content script
 // 選択されたテキストを検知して翻訳チップを表示する
 
+interface AzureConfig {
+  endpoint: string | null;
+  deployment: string | null;
+  apiVersion: string | null;
+  apiKey: string | null;
+}
+
+interface PageContext {
+  title: string;
+  description: string;
+  headings: string;
+}
+
+interface SurroundingContext {
+  before: string;
+  after: string;
+}
+
+interface TranslationContext {
+  page: PageContext;
+  surrounding: SurroundingContext | null;
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface AzureOpenAIResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
 const QTRANS_CHIP_ID = '__qtrans_translation_chip';
-let qtransHideTimeout = null;
+let qtransHideTimeout: ReturnType<typeof setTimeout> | null = null;
 let qtransLastText = '';
 
-function removeExistingChip() {
+function removeExistingChip(): void {
   const existing = document.getElementById(QTRANS_CHIP_ID);
   if (existing && existing.parentNode) {
     existing.parentNode.removeChild(existing);
@@ -16,7 +52,7 @@ function removeExistingChip() {
   }
 }
 
-function createChipElement(text, rect) {
+function createChipElement(text: string, rect: DOMRect): void {
   removeExistingChip();
 
   const chip = document.createElement('div');
@@ -44,7 +80,7 @@ function createChipElement(text, rect) {
   close.style.cursor = 'pointer';
   close.style.opacity = '0.7';
   close.style.fontWeight = 'bold';
-  close.onclick = (e) => {
+  close.onclick = (e: MouseEvent): void => {
     e.stopPropagation();
     removeExistingChip();
   };
@@ -58,21 +94,21 @@ function createChipElement(text, rect) {
   }, 8000);
 }
 
-async function loadApiKey() {
+async function loadApiKey(): Promise<AzureConfig> {
   return new Promise((resolve) => {
     try {
       chrome.storage.sync.get(
         ['qtransAzureEndpoint', 'qtransAzureDeployment', 'qtransAzureApiVersion', 'qtransApiKey'],
         (result) => {
           resolve({
-            endpoint: result.qtransAzureEndpoint || null,
-            deployment: result.qtransAzureDeployment || null,
-            apiVersion: result.qtransAzureApiVersion || null,
-            apiKey: result.qtransApiKey || null,
+            endpoint: (result.qtransAzureEndpoint as string) || null,
+            deployment: (result.qtransAzureDeployment as string) || null,
+            apiVersion: (result.qtransAzureApiVersion as string) || null,
+            apiKey: (result.qtransApiKey as string) || null,
           });
         }
       );
-    } catch (e) {
+    } catch {
       resolve({
         endpoint: null,
         deployment: null,
@@ -83,15 +119,16 @@ async function loadApiKey() {
   });
 }
 
-function getPageContext() {
+function getPageContext(): PageContext {
   // ページのタイトルとメタ情報を取得
   const title = document.title || '';
-  const metaDescription = document.querySelector('meta[name="description"]')?.content || '';
+  const metaDescription =
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content || '';
 
   // 見出し要素を取得（h1-h3）
   const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
     .slice(0, 5) // 最初の5つまで
-    .map((h) => h.textContent.trim())
+    .map((h) => h.textContent?.trim() ?? '')
     .filter((text) => text.length > 0)
     .join(' | ');
 
@@ -102,14 +139,17 @@ function getPageContext() {
   };
 }
 
-function getSurroundingContext(selection) {
+function getSurroundingContext(selection: Selection): SurroundingContext | null {
   if (!selection || selection.rangeCount === 0) return null;
 
   const range = selection.getRangeAt(0);
   const container = range.commonAncestorContainer;
 
   // 親要素を探す（段落やセクション）
-  let parent = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+  let parent: Element | null =
+    container.nodeType === Node.TEXT_NODE
+      ? (container as Text).parentElement
+      : (container as Element);
 
   while (parent && !['P', 'ARTICLE', 'SECTION', 'DIV', 'LI'].includes(parent.tagName)) {
     parent = parent.parentElement;
@@ -136,7 +176,7 @@ function getSurroundingContext(selection) {
   };
 }
 
-async function translateText(text, context = null) {
+async function translateText(text: string, context: TranslationContext | null = null): Promise<string> {
   const config = await loadApiKey();
   if (!config.apiKey || !config.endpoint || !config.deployment || !config.apiVersion) {
     return 'Azure OpenAI の設定が未完了です（拡張機能のオプションから設定してください）';
@@ -150,16 +190,14 @@ async function translateText(text, context = null) {
     // 文脈情報を構築
     let contextInfo = '';
     if (context) {
-      const parts = [];
+      const parts: string[] = [];
       if (context.page.title) parts.push(`ページタイトル: ${context.page.title}`);
       if (context.page.headings) parts.push(`見出し: ${context.page.headings}`);
       if (context.surrounding?.before) parts.push(`前の文脈: ${context.surrounding.before}`);
       if (context.surrounding?.after) parts.push(`後の文脈: ${context.surrounding.after}`);
 
       if (parts.length > 0) {
-        contextInfo = `\n\n以下の文脈情報を参考にして、適切な翻訳を行ってください:\n${parts.join(
-          '\n'
-        )}`;
+        contextInfo = `\n\n以下の文脈情報を参考にして、適切な翻訳を行ってください:\n${parts.join('\n')}`;
       }
     }
 
@@ -170,6 +208,17 @@ Otherwise, translate it to natural, professional Japanese.
 When translating technical terms, maintain consistency with the context and use appropriate terminology.
 Respond with translation only, without any explanations or additional text.${contextInfo}`;
 
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      {
+        role: 'user',
+        content: text,
+      },
+    ];
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -177,16 +226,7 @@ Respond with translation only, without any explanations or additional text.${con
         'api-key': config.apiKey,
       },
       body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: text,
-          },
-        ],
+        messages,
         temperature: 0.3, // 少し温度を上げて文脈を考慮しやすくする
       }),
     });
@@ -196,9 +236,8 @@ Respond with translation only, without any explanations or additional text.${con
       return '翻訳 API エラーが発生しました';
     }
 
-    const data = await res.json();
-    const translation =
-      data.choices?.[0]?.message?.content?.trim() || '翻訳結果を取得できませんでした';
+    const data: AzureOpenAIResponse = await res.json();
+    const translation = data.choices?.[0]?.message?.content?.trim() || '翻訳結果を取得できませんでした';
     return translation;
   } catch (e) {
     console.error('Q-Trans fetch error', e);
@@ -206,9 +245,9 @@ Respond with translation only, without any explanations or additional text.${con
   }
 }
 
-let qtransSelectionTimeout = null;
+let qtransSelectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
-async function handleSelectionChange() {
+async function handleSelectionChange(): Promise<void> {
   if (qtransSelectionTimeout) {
     clearTimeout(qtransSelectionTimeout);
   }
@@ -247,7 +286,7 @@ async function handleSelectionChange() {
     // 文脈情報を取得
     const pageContext = getPageContext();
     const surroundingContext = getSurroundingContext(selection);
-    const context = {
+    const context: TranslationContext = {
       page: pageContext,
       surrounding: surroundingContext,
     };
@@ -261,4 +300,3 @@ async function handleSelectionChange() {
 document.addEventListener('selectionchange', handleSelectionChange, {
   passive: true,
 });
-

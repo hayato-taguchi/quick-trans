@@ -17,7 +17,7 @@
         "<all_urls>"
       ],
       "js": [
-        "content-script.js"
+        "dist/content-script.js"
       ],
       "run_at": "document_idle"
     }
