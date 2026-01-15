@@ -1,0 +1,110 @@
+{
+  "name": "q-trans",
+  "displayName": "Q-Trans",
+  "description": "Quick translate on text selection - テキスト選択で即座に翻訳",
+  "version": "1.0.0",
+  "publisher": "qtrans",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "qtrans.translateSelection",
+        "title": "Q-Trans: 選択テキストを翻訳"
+      },
+      {
+        "command": "qtrans.explainSelection",
+        "title": "Q-Trans: 選択テキストを解説"
+      },
+      {
+        "command": "qtrans.translateClipboard",
+        "title": "Q-Trans: クリップボードを翻訳"
+      },
+      {
+        "command": "qtrans.explainClipboard",
+        "title": "Q-Trans: クリップボードを解説"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "qtrans.translateSelection",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "qtrans.explainSelection",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "qtrans.translateClipboard",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t"
+      },
+      {
+        "command": "qtrans.explainClipboard",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e"
+      }
+    ],
+    "configuration": {
+      "title": "Q-Trans",
+      "properties": {
+        "qtrans.azureEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "Azure OpenAI エンドポイント URL (例: https://your-resource.openai.azure.com)"
+        },
+        "qtrans.azureDeployment": {
+          "type": "string",
+          "default": "",
+          "description": "Azure OpenAI デプロイメント名"
+        },
+        "qtrans.azureApiVersion": {
+          "type": "string",
+          "default": "2024-02-15-preview",
+          "description": "Azure OpenAI API バージョン"
+        },
+        "qtrans.azureApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Azure OpenAI API キー"
+        },
+        "qtrans.enableHoverTranslation": {
+          "type": "boolean",
+          "default": true,
+          "description": "選択テキストにホバーした時に翻訳を表示する"
+        },
+        "qtrans.maxTextLength": {
+          "type": "number",
+          "default": 300,
+          "description": "翻訳対象の最大文字数"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  }
+}
