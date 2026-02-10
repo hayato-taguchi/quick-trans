@@ -1,6 +1,54 @@
 import * as vscode from 'vscode';
 
 // ============================================================
+// 解説チップ用Decoration
+// ============================================================
+
+let explanationDecorationType: vscode.TextEditorDecorationType | null = null;
+let explanationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearExplanationDecoration(): void {
+  if (explanationDecorationType) {
+    explanationDecorationType.dispose();
+    explanationDecorationType = null;
+  }
+  if (explanationTimeout) {
+    clearTimeout(explanationTimeout);
+    explanationTimeout = null;
+  }
+}
+
+function showExplanationChip(
+  editor: vscode.TextEditor,
+  selection: vscode.Selection,
+  explanation: string
+): void {
+  clearExplanationDecoration();
+
+  // Decorationを作成（選択範囲の後ろにテキストを追加）
+  explanationDecorationType = vscode.window.createTextEditorDecorationType({
+    after: {
+      contentText: ` 💡 ${explanation}`,
+      color: new vscode.ThemeColor('editorInfo.foreground'),
+      backgroundColor: new vscode.ThemeColor('editorInfo.background'),
+      margin: '0 0 0 1em',
+      fontStyle: 'italic',
+    },
+  });
+
+  // 選択範囲の最後の行に適用
+  const endLine = selection.end.line;
+  const lineRange = new vscode.Range(endLine, 0, endLine, 0);
+
+  editor.setDecorations(explanationDecorationType, [lineRange]);
+
+  // 15秒後に自動で消える
+  explanationTimeout = setTimeout(() => {
+    clearExplanationDecoration();
+  }, 15000);
+}
+
+// ============================================================
 // 型定義
 // ============================================================
 
@@ -360,58 +408,12 @@ async function explainSelectionCommand(): Promise<void> {
 
     statusMessage.dispose();
 
-    // 結果をパネルで表示
-    const panel = vscode.window.createWebviewPanel(
-      'qtransExplanation',
-      `Q-Trans: 「${selectedText.slice(0, 20)}${selectedText.length > 20 ? '...' : ''}」の解説`,
-      vscode.ViewColumn.Beside,
-      {}
-    );
-
-    panel.webview.html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            padding: 20px;
-            line-height: 1.6;
-            color: var(--vscode-foreground);
-            background: var(--vscode-editor-background);
-          }
-          .selected-text {
-            background: var(--vscode-editor-selectionBackground);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            margin-bottom: 16px;
-            display: inline-block;
-          }
-          .explanation {
-            white-space: pre-wrap;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="selected-text">${escapeHtml(selectedText)}</div>
-        <div class="explanation">${escapeHtml(explanation)}</div>
-      </body>
-      </html>
-    `;
+    // インラインチップで表示（15秒で自動消去）
+    showExplanationChip(editor, selection, explanation);
   } catch {
     statusMessage.dispose();
     vscode.window.setStatusBarMessage('✗ 解説の取得に失敗しました', 3000);
   }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 // ============================================================
@@ -513,46 +515,14 @@ async function explainClipboardCommand(): Promise<void> {
 
     statusMessage.dispose();
 
-    // 結果をパネルで表示
-    const panel = vscode.window.createWebviewPanel(
-      'qtransExplanation',
-      `Q-Trans: 「${text.slice(0, 20)}${text.length > 20 ? '...' : ''}」の解説`,
-      vscode.ViewColumn.Beside,
-      {}
-    );
-
-    panel.webview.html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            padding: 20px;
-            line-height: 1.6;
-            color: var(--vscode-foreground);
-            background: var(--vscode-editor-background);
-          }
-          .selected-text {
-            background: var(--vscode-editor-selectionBackground);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            margin-bottom: 16px;
-            display: inline-block;
-            word-break: break-all;
-          }
-          .explanation {
-            white-space: pre-wrap;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="selected-text">${escapeHtml(text)}</div>
-        <div class="explanation">${escapeHtml(explanation)}</div>
-      </body>
-      </html>
-    `;
+    // アクティブエディタがあればインラインチップ、なければステータスバー
+    const editor = vscode.window.activeTextEditor;
+    if (editor && !editor.selection.isEmpty) {
+      showExplanationChip(editor, editor.selection, explanation);
+    } else {
+      // ステータスバーに表示（15秒で消える）
+      vscode.window.setStatusBarMessage(`💡 ${explanation}`, 15000);
+    }
   } catch {
     statusMessage.dispose();
     vscode.window.setStatusBarMessage('✗ 解説の取得に失敗しました', 3000);
