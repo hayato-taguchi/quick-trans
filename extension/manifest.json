@@ -3,8 +3,19 @@
   "description": "Quick translate on text focus/selection",
   "version": "1.0.0",
   "manifest_version": 3,
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://*.openai.azure.com/*"],
+  "permissions": ["storage", "activeTab", "scripting", "identity"],
+  "host_permissions": [
+    "https://*.openai.azure.com/*",
+    "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["openid", "profile", "email"]
+  },
+  "action": {
+    "default_popup": "dist/popup/popup.html"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

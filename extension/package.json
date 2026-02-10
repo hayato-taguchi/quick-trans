@@ -4,11 +4,25 @@
   "description": "Q-Trans Chrome Extension",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:ts && npm run build:popup",
+    "build:ts": "tsc",
+    "build:popup": "vite build",
     "watch": "tsc --watch"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/chrome": "^0.0.287",
-    "typescript": "^5.7.3"
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.3",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
