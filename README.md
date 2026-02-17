@@ -8,11 +8,11 @@
 
 ```
 quick-translate/
-├── extension/          # Chrome拡張機能
-│   ├── manifest.json
-│   ├── content-script.js
-│   ├── options.html
-│   └── options.js
+├── extension/          # Chrome拡張機能 (WXT)
+│   ├── wxt.config.ts
+│   ├── entrypoints/
+│   ├── src/
+│   └── .output/chrome-mv3/   # ビルド後の読み込み対象
 ├── landing/            # ランディングページ（課金誘導LP）
 └── backend/            # バックエンドサーバー
 ```
@@ -21,10 +21,16 @@ quick-translate/
 
 ### Chrome拡張機能
 
+```bash
+cd extension
+npm install
+npm run build
+```
+
 1. Chromeで `chrome://extensions/` を開く
 2. 「デベロッパーモード」を有効化
 3. 「パッケージ化されていない拡張機能を読み込む」をクリック
-4. `extension/` ディレクトリを選択
+4. `extension/.output/chrome-mv3/` ディレクトリを選択
 
 ### バックエンドサーバー
 

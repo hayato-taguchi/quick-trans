@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GoogleUser } from '../types/google-user';
 import { loadAuthState, signInWithGoogle, signOutFromGoogle } from './auth';
@@ -7,7 +8,7 @@ type Status = {
   message: string;
 } | null;
 
-function Avatar({ user }: { user: GoogleUser | null }): JSX.Element {
+function Avatar({ user }: { user: GoogleUser | null }): ReactElement {
   if (!user?.picture) {
     return (
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-500">
@@ -25,7 +26,7 @@ function Avatar({ user }: { user: GoogleUser | null }): JSX.Element {
   );
 }
 
-export default function App(): JSX.Element {
+export default function App(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [user, setUser] = useState<GoogleUser | null>(null);

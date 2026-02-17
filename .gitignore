@@ -42,6 +42,8 @@ Thumbs.db
 # Extension specific
 extension/*.crx
 extension/*.pem
+extension/.output/
+extension/.wxt/
 
 # Backend
 backend/.env

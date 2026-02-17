@@ -2,6 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Q-Trans 設定</title>
     <style>
       body {
@@ -34,7 +35,7 @@
         margin-top: 16px;
         margin-bottom: 6px;
       }
-      input[type="password"] {
+      input[type='password'] {
         width: 100%;
         padding: 8px 10px;
         border-radius: 8px;
@@ -42,7 +43,7 @@
         font-size: 13px;
         box-sizing: border-box;
       }
-      input[type="password"]:focus {
+      input[type='password']:focus {
         outline: none;
         border-color: #3b82f6;
         box-shadow: 0 0 0 1px #3b82f6;
@@ -82,47 +83,28 @@
     <div class="container">
       <h1>Q-Trans 設定</h1>
       <p>
-        選択したテキストを自動で翻訳してチップ表示します。ここで翻訳に利用する
-        Azure OpenAI の情報を設定してください。<br />
+        選択したテキストを自動で翻訳してチップ表示します。ここで翻訳に利用する Azure OpenAI の情報を設定してください。<br />
         例:
         <code>https://&lt;リソース名&gt;.openai.azure.com</code>
         など
       </p>
 
       <label for="endpoint">Azure OpenAI エンドポイント URL</label>
-      <input
-        id="endpoint"
-        type="text"
-        placeholder="https://your-resource.openai.azure.com"
-      />
+      <input id="endpoint" type="text" placeholder="https://your-resource.openai.azure.com" />
 
       <label for="deployment">デプロイ名（Deployment name）</label>
-      <input
-        id="deployment"
-        type="text"
-        placeholder="gpt-4o-mini などのデプロイ名"
-      />
+      <input id="deployment" type="text" placeholder="gpt-4o-mini などのデプロイ名" />
 
       <label for="apiVersion">API バージョン</label>
-      <input
-        id="apiVersion"
-        type="text"
-        placeholder="2024-06-01 など"
-      />
+      <input id="apiVersion" type="text" placeholder="2024-06-01 など" />
 
       <label for="apiKey">Azure OpenAI API キー</label>
-      <input
-        id="apiKey"
-        type="password"
-        placeholder="Azure OpenAI の api-key を入力"
-      />
+      <input id="apiKey" type="password" placeholder="Azure OpenAI の api-key を入力" />
 
       <button id="saveBtn">保存する</button>
       <div id="status" class="status"></div>
     </div>
 
-    <script src="dist/options.js"></script>
+    <script type="module" src="./main.ts"></script>
   </body>
 </html>
-
-

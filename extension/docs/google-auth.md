@@ -11,7 +11,8 @@
 - 実装ファイル:
   - `extension/src/popup/auth.ts`
   - `extension/src/popup/App.tsx`
-  - `extension/manifest.json`
+  - `extension/wxt.config.ts`
+  - `extension/entrypoints/popup/index.html`
 
 ## 2. GCP 側セットアップ手順
 
@@ -41,9 +42,9 @@ Chrome拡張の OAuth リダイレクト先は次の形式です。
 
 `extension/src/popup/auth.ts` では `chrome.identity.getRedirectURL()` を使用しているため、実際の拡張 ID に合わせた URI が自動利用されます。
 
-## 3. manifest.json 設定
+## 3. WXT manifest 設定
 
-`extension/manifest.json` の Google認証関連キー:
+`extension/wxt.config.ts` の `manifest` で Google認証関連キーを定義:
 
 - `permissions`
   - `identity`: OAuthフロー起動に必須
@@ -55,7 +56,7 @@ Chrome拡張の OAuth リダイレクト先は次の形式です。
   - `https://www.googleapis.com/*`: UserInfo API 呼び出し
   - `https://oauth2.googleapis.com/*`: revoke API 呼び出し
 - `action.default_popup`
-  - `dist/popup/popup.html`: Reactポップアップの実体
+  - WXTが `entrypoints/popup/index.html` をもとに自動生成
 
 現在の `client_id` はプレースホルダーです。必ず差し替えてください。
 
@@ -92,7 +93,7 @@ Chrome拡張の OAuth リダイレクト先は次の形式です。
 ## 6.2 Client ID 未設定/不正
 
 - 症状: 認証開始時に失敗
-- 対処: `manifest.json` の `oauth2.client_id` を正しい値に更新
+- 対処: `wxt.config.ts` の `manifest.oauth2.client_id` を正しい値に更新
 
 ## 6.3 トークン期限切れ・無効
 
@@ -116,7 +117,8 @@ Chrome拡張の OAuth リダイレクト先は次の形式です。
 - [ ] 拡張IDを固定してテストする（ID変化に注意）
 - [ ] `oauth2.client_id` が対象拡張ID向けであることを確認
 - [ ] OAuth同意画面のテストユーザーに自分のアカウントを追加
-- [ ] `npm run build` 後に `dist/popup/popup.html` が生成されることを確認
+- [ ] `npm run build` 後に `extension/.output/chrome-mv3/manifest.json` が生成されることを確認
+- [ ] `extension/.output/chrome-mv3/` をChromeへ読み込むことを確認
 
 ## 7.2 公開前
 
